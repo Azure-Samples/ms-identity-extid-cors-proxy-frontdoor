@@ -130,6 +130,8 @@ resource audit 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
     ]
   }
 }
+
+output customDomainValidationDnsTxtRecordDomain string = frontDoorCustomDomain.outputs.customDomainValidationDnsTxtRecordDomain
 output customDomainValidationDnsTxtRecordName string = frontDoorCustomDomain.outputs.customDomainValidationDnsTxtRecordName
 output customDomainValidationDnsTxtRecordValue string = frontDoorCustomDomain.outputs.customDomainValidationDnsTxtRecordValue
 output customDomainValidationExpiry string = frontDoorCustomDomain.outputs.customDomainValidationExpiry

@@ -13,20 +13,20 @@ param environmentName string
 @description('Primary location for all resources')
 param location string
 
-// Optional parameters to override the default azd resource naming conventions.
-// Add the following to main.parameters.json to provide values:
-// "resourceGroupName": {
-//      "value": "myGroupName"
-// }
-
 @description('The origin domain to allow CORS requests from in the format of SCHEME://DOMAIN:PORT, e.g. http://localhost:3000')
 param corsAllowedOrigin string
 
 @description('The subdomain of the External ID tenant that we will proxy (This is the portion of the primary domain before the .onmicrosoft.com part, e.g. mytenant)')
 param tenantSubdomain string
 
+@description('The custom domain to attach to the front door endpoint.')
 param customDomain string
 
+// Optional parameters to override the default azd resource naming conventions.
+// Add the following to main.parameters.json to provide values:
+// "resourceGroupName": {
+//      "value": "myGroupName"
+// }
 param resourceGroupName string = ''
 param logAnalyticsWorkspaceName string = ''
 param frontDoorName string = ''
@@ -74,10 +74,15 @@ module logAnalytics 'core/monitor/loganalytics.bicep' = {
 }
 
 output AZURE_LOCATION string = location
-output AZURE_TENANT_ID string = tenant().tenantId
+// output AZURE_TENANT_ID string = tenant().tenantId
 
+//
+// If using a non-Azure DNS provider, you will need to create a DNS TXT record with the following values. The CUSTOMER_DOMAIN_DNS_EXPIRY
+// value is the time in UTC before which you need to create the record.
+output CUSTOM_DOMAIN_DNS_TXT_DOMAIN string = frontDoor.outputs.customDomainValidationDnsTxtRecordDomain
 output CUSTOM_DOMAIN_DNS_TXT_NAME string = frontDoor.outputs.customDomainValidationDnsTxtRecordName
 output CUSTOM_DOMAIN_DNS_TXT_VALUE string = frontDoor.outputs.customDomainValidationDnsTxtRecordValue
 output CUSTOM_DOMAIN_DNS_EXPIRY string = frontDoor.outputs.customDomainValidationExpiry
 
-output FRONTDOOR_ENDPOINT_NAME string = frontDoor.outputs.frontDoorEndpointHostName
+output FRONTDOOR_ENDPOINT string = frontDoor.outputs.frontDoorEndpointHostName
+output CORS_PROXY_ENDPOINT string = 'https://${customDomain}/${tenantSubdomain}.onmicrosoft.com/'

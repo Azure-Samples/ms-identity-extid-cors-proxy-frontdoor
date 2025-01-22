@@ -7,6 +7,8 @@ param frontDoorProfileName string
 @minLength(1)
 param customDomain string
 
+var customDomainHost = split(customDomain, '.')[0]
+var customDomainZone = substring(customDomain, indexOf(customDomain, '.') + 1)
 
 resource frontDoorCustomDomain 'Microsoft.Cdn/profiles/customDomains@2024-09-01' = {
   name: replace(customDomain, '.', '-')
@@ -25,6 +27,7 @@ resource frontDoorProfile 'Microsoft.Cdn/profiles@2024-09-01' existing = {
 }
 
 output frontDoorCustomDomainId string = frontDoorCustomDomain.id
-output customDomainValidationDnsTxtRecordName string = '_dnsauth.${frontDoorCustomDomain.properties.hostName}'
+output customDomainValidationDnsTxtRecordDomain string = customDomainZone
+output customDomainValidationDnsTxtRecordName string = '_dnsauth.${customDomainHost}'
 output customDomainValidationDnsTxtRecordValue string = frontDoorCustomDomain.properties.validationProperties.validationToken
 output customDomainValidationExpiry string = frontDoorCustomDomain.properties.validationProperties.expirationDate
