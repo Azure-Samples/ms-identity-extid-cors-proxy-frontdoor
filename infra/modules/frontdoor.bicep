@@ -9,9 +9,11 @@ param frontDoorSkuName string = 'Standard_AzureFrontDoor'
 
 param originUrl string
 param customDomain string
+param corsAllowedOrigin string
 
 param frontDoorEndpointName string
 param frontDoorName string
+param logAnalyticsName string
 
 resource frontDoorProfile 'Microsoft.Cdn/profiles@2024-09-01' = {
   name: frontDoorName
@@ -40,12 +42,6 @@ resource frontDoorOriginGroup 'Microsoft.Cdn/profiles/originGroups@2021-06-01' =
       sampleSize: 4
       successfulSamplesRequired: 3
     }
-    // healthProbeSettings: {
-    //   probePath: '/'
-    //   probeRequestType: 'HEAD'
-    //   probeProtocol: 'Http'
-    //   probeIntervalInSeconds: 100
-    // }
   }
 }
 
@@ -69,6 +65,15 @@ module frontDoorCustomDomain './frontdoor-customdomain.bicep' = {
     customDomain: customDomain
   }
 }
+
+
+module corsRules './frontdoor-rules-cors.bicep' = {
+  name: 'corsRules'
+  params: {
+    frontDoorProfileName: frontDoorProfile.name
+    corsAllowedOrigin: corsAllowedOrigin
+  }
+}
 resource frontDoorRoute 'Microsoft.Cdn/profiles/afdEndpoints/routes@2024-09-01' = {
   name: 'default-route'
   parent: frontDoorEndpoint
@@ -79,6 +84,11 @@ resource frontDoorRoute 'Microsoft.Cdn/profiles/afdEndpoints/routes@2024-09-01' 
     originGroup: {
       id: frontDoorOriginGroup.id
     }
+    ruleSets: [
+      {
+        id: corsRules.outputs.frontDoorRuleSetId
+      }
+    ]
     customDomains: [
       {
         id: frontDoorCustomDomain.outputs.frontDoorCustomDomainId
@@ -92,11 +102,34 @@ resource frontDoorRoute 'Microsoft.Cdn/profiles/afdEndpoints/routes@2024-09-01' 
       '/*'
     ]
     forwardingProtocol: 'HttpsOnly'
-    linkToDefaultDomain: 'Enabled'
+    linkToDefaultDomain: 'Disabled' // We only serve the custom domain
     httpsRedirect: 'Enabled'
   }
 }
 
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
+  name: logAnalyticsName
+}
+
+resource audit 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'audit'
+  scope: frontDoorProfile
+  properties: {
+    workspaceId: logAnalytics.id
+    logs: [
+      {
+        category: 'FrontdoorAccessLog'
+        enabled: true
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+      }
+    ]
+  }
+}
 output customDomainValidationDnsTxtRecordName string = frontDoorCustomDomain.outputs.customDomainValidationDnsTxtRecordName
 output customDomainValidationDnsTxtRecordValue string = frontDoorCustomDomain.outputs.customDomainValidationDnsTxtRecordValue
 output customDomainValidationExpiry string = frontDoorCustomDomain.outputs.customDomainValidationExpiry

@@ -18,15 +18,19 @@ param location string
 // "resourceGroupName": {
 //      "value": "myGroupName"
 // }
-param resourceGroupName string = ''
-param logAnalyticsWorkspaceName string = ''
-param frontDoorName string = ''
-param frontDoorEndpointName string = ''
+
+@description('The origin domain to allow CORS requests from in the format of SCHEME://DOMAIN:PORT, e.g. http://localhost:3000')
+param corsAllowedOrigin string
 
 @description('The subdomain of the External ID tenant that we will proxy (This is the portion of the primary domain before the .onmicrosoft.com part, e.g. mytenant)')
 param tenantSubdomain string
 
 param customDomain string
+
+param resourceGroupName string = ''
+param logAnalyticsWorkspaceName string = ''
+param frontDoorName string = ''
+param frontDoorEndpointName string = ''
 
 var abbrs = loadJsonContent('./abbreviations.json')
 
@@ -36,20 +40,9 @@ var tags = {
   'azd-env-name': environmentName
 }
 
-// Generate a unique token to be used in naming resources.
-// Remove linter suppression after using.
-#disable-next-line no-unused-vars
+// A unique token to be used in naming resources.
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 
-// Name of the service defined in azure.yaml
-// A tag named azd-service-name with this value should be applied to the service host resource, such as:
-//   Microsoft.Web/sites for appservice, function
-// Example usage:
-//   tags: union(tags, { 'azd-service-name': apiServiceName })
-#disable-next-line no-unused-vars
-var serviceName = 'cors-proxy'
-
-// Organize resources in a resource group
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: !empty(resourceGroupName) ? resourceGroupName : '${abbrs.resourcesResourceGroups}${environmentName}'
   location: location
@@ -65,18 +58,21 @@ module frontDoor './modules/frontdoor.bicep' = {
     frontDoorName: !empty(frontDoorName) ? frontDoorName : '${abbrs.networkFrontDoors}${resourceToken}'
     originUrl: '${tenantSubdomain}.ciamlogin.com'
     customDomain: customDomain
+    corsAllowedOrigin: corsAllowedOrigin
+    logAnalyticsName: !empty(logAnalyticsWorkspaceName) ? logAnalyticsWorkspaceName : '${abbrs.operationalInsightsWorkspaces}${resourceToken}'
   }
 }
 
+module logAnalytics 'core/monitor/loganalytics.bicep' = {
+  name: 'logAnalytics'
+  scope: rg
+  params: {
+    name: !empty(logAnalyticsWorkspaceName) ? logAnalyticsWorkspaceName : '${abbrs.operationalInsightsWorkspaces}${resourceToken}'
+    location: location
+    tags: tags
+  }
+}
 
-// Add outputs from the deployment here, if needed.
-//
-// This allows the outputs to be referenced by other bicep deployments in the deployment pipeline,
-// or by the local machine as a way to reference created resources in Azure for local development.
-// Secrets should not be added here.
-//
-// Outputs are automatically saved in the local azd environment .env file.
-// To see these outputs, run `azd env get-values`,  or `azd env get-values --output json` for json output.
 output AZURE_LOCATION string = location
 output AZURE_TENANT_ID string = tenant().tenantId
 
