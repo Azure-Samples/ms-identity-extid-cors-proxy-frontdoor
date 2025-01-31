@@ -1,6 +1,6 @@
-# Azure Frontdoor based CORS Preoxy for Native Authentication APIs using Azure Developer CLI
+# Azure Frontdoor based CORS Proxy for Native Authentication APIs using Azure Developer CLI
 
-This repository contains an Azure Frontdoor reference sample deployed to Azure using Azure Developer CLI (`azd`). The sample uses External ID Custom URL Domains and Azure Frontdoor to support Single Page Applications to use External ID Native Authentication APIs and SDKs.
+This repository contains an Azure Frontdoor reference template deployed to Azure using Azure Developer CLI (`azd`). The template uses External ID Custom URL Domains and Azure Frontdoor to enable Single Page Applications to use External ID Native Authentication APIs and SDKs.
 
 ## Prerequisites
 
@@ -9,7 +9,7 @@ This repository contains an Azure Frontdoor reference sample deployed to Azure u
 
 ## Configuration
 
-The template relies upon you already having a validated Custom URL Domain within your External ID tenant (e.g. `login.example.com`).  It will create an Azure Frontdoor instance which can be connected to your Custom URL Domain via a `CNAME` DNS Record.  The Azure Frontdoor will proxy all requests to your External ID endpoint (e.g.`myexternalid.ciamlogin.com`). You will be prompted for three configuration values (`corsAllowedOrigin`, `customDomain`, and `tenantSubdomain`) which you can see in the diagram below:
+The template requires you to already have a validated Custom URL Domain within your External ID tenant (e.g. `login.example.com`).  It will create an Azure Frontdoor instance which can be connected to your Custom URL Domain via a `CNAME` DNS Record.  The Azure Frontdoor will proxy all requests to your External ID endpoint (e.g.`myexternalid.ciamlogin.com`). You will be prompted for three configuration values (`corsAllowedOrigin`, `customDomain`, and `tenantSubdomain`), examples of which you can see in the diagram below:
 
 ![Configuration Values](./docs/configuration-values.png)
 
