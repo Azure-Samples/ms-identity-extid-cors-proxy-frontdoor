@@ -1,75 +1,78 @@
-# Azure Developer CLI (azd) Bicep Starter
+# Azure Frontdoor based CORS Preoxy for Native Authentication APIs using Azure Developer CLI
 
-A starter blueprint for getting your application up on Azure using [Azure Developer CLI](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/overview) (azd). Add your application code, write Infrastructure as Code assets in [Bicep](https://aka.ms/bicep) to get your application up and running quickly.
+This repository contains an Azure Frontdoor reference sample deployed to Azure using Azure Developer CLI (`azd`). The sample uses External ID Custom URL Domains and Azure Frontdoor to support Single Page Applications to use External ID Native Authentication APIs and SDKs.
 
-The following assets have been provided:
+## Prerequisites
 
-- Infrastructure-as-code (IaC) Bicep files under the `infra` folder that demonstrate how to provision resources and setup resource tagging for azd.
-- A [dev container](https://containers.dev) configuration file under the `.devcontainer` directory that installs infrastructure tooling by default. This can be readily used to create cloud-hosted developer environments such as [GitHub Codespaces](https://aka.ms/codespaces).
-- Continuous deployment workflows for CI providers such as GitHub Actions under the `.github` directory, and Azure Pipelines under the `.azdo` directory that work for most use-cases.
++ [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
++ A [Custom URL Domain](https://learn.microsoft.com/en-us/entra/external-id/customers/how-to-custom-url-domain) configured for your External ID tenant.
 
-## Next Steps
+## Configuration
 
-### Step 1: Add application code
+The template relies upon you already having a validated Custom URL Domain within your External ID tenant (e.g. `login.example.com`).  It will create an Azure Frontdoor instance which can be connected to your Custom URL Domain via a `CNAME` DNS Record.  The Azure Frontdoor will proxy all requests to your External ID endpoint (e.g.`myexternalid.ciamlogin.com`). You will be prompted for three configuration values (`corsAllowedOrigin`, `customDomain`, and `tenantSubdomain`) which you can see in the diagram below:
 
-1. Initialize the service source code projects anywhere under the current directory. Ensure that all source code projects can be built successfully.
-    - > Note: For `function` services, it is recommended to initialize the project using the provided [quickstart tools](https://learn.microsoft.com/en-us/azure/azure-functions/functions-get-started).
-2. Once all service source code projects are building correctly, update `azure.yaml` to reference the source code projects.
-3. Run `azd package` to validate that all service source code projects can be built and packaged locally.
+![Configuration Values](./docs/configuration-values.png)
 
-### Step 2: Provision Azure resources
+## Deployment
 
-Update or add Bicep files to provision the relevant Azure resources. This can be done incrementally, as the list of [Azure resources](https://learn.microsoft.com/en-us/azure/?product=popular) are explored and added.
+1. Run the following command to initialize the project.
 
-- A reference library that contains all of the Bicep modules used by the azd templates can be found [here](https://github.com/Azure-Samples/todo-nodejs-mongo/tree/main/infra/core).
-- All Azure resources available in Bicep format can be found [here](https://learn.microsoft.com/en-us/azure/templates/).
+```bash
+azd init --template https://github.com/jamesc/ms-identity-ciam-cors-proxy-frontdoor
+```
 
-Run `azd provision` whenever you want to ensure that changes made are applied correctly and work as expected.
+This command will clone the code to your current folder and prompt you for the following information:
 
-### Step 3: Tie in application and infrastructure
+- `Environment Name`: This will be used as a prefix for the resource group that will be created to hold all Azure resources. This name should be unique within your Azure subscription.
 
-Certain changes to Bicep files or deployment manifests are required to tie in application and infrastructure together. For example:
 
-1. Set up [application settings](#application-settings) for the code running in Azure to connect to other Azure resources.
-1. If you are accessing sensitive resources in Azure, set up [managed identities](#managed-identities) to allow the code running in Azure to securely access the resources.
-1. If you have secrets, it is recommended to store secrets in [Azure Key Vault](#azure-key-vault) that then can be retrieved by your application, with the use of managed identities.
-1. Configure [host configuration](#host-configuration) on your hosting platform to match your application's needs. This may include networking options, security options, or more advanced configuration that helps you take full advantage of Azure capabilities.
+2. Run the following command to provision the template's infrastructure to Azure.
 
-For more details, see [additional details](#additional-details) below.
+```bash
+azd up
+```
 
-When changes are made, use azd to validate and apply your changes in Azure, to ensure that they are working as expected:
+This command will prompt you for the following information:
+- `Azure Location`: The Azure location where your resources will be deployed.
+- `Azure Subscription`: The Azure Subscription where your resources will be deployed.
+- `corsAllowedOrigin` parameter: The origin domain to allow CORS requests from in the format of `SCHEME://DOMAIN:PORT`, e.g. `http://localhost:3000`.
+- `tenantSubdomain` parameter: The subdomain of the External ID tenant that we will proxy (This is the portion of the primary domain before the `.onmicrosoft.com` part, e.g. `mytenant`).
+- `customDomain` parameter: The full URL of the custom domain configured within External ID ,e.g. login.example.com
 
-- Run `azd up` to validate both infrastructure and application code changes.
-- Run `azd deploy` to validate application code changes only.
 
-### Step 4: Up to Azure
+> NOTE: This may take a while to complete as it provisions Azure resources. You will see a progress indicator as it provisions the resources.
 
-Finally, run `azd up` to run the end-to-end infrastructure provisioning (`azd provision`) and deployment (`azd deploy`) flow. Visit the service endpoints listed to see your application up-and-running!
+You can see configuration information by running `azd env get-values`.  An example output showing the relevant values is below.
 
-## Additional Details
+```bash
+> azd env get-values
+AZURE_ENV_NAME="cors-proxy-frontdoor"
+...
+...
+CORS_PROXY_ENDPOINT="https://login.example.com/myexternalid.onmicrosoft.com/"
+CUSTOM_DOMAIN_DNS_EXPIRY="2025-02-07T12:48:37.5716596+00:00"
+CUSTOM_DOMAIN_DNS_TXT_DOMAIN="example.com"
+CUSTOM_DOMAIN_DNS_TXT_NAME="_dnsauth.login"
+CUSTOM_DOMAIN_DNS_TXT_VALUE="_XXXXXXXXXXXXXXXXXXXXXXXX"
+FRONTDOOR_ENDPOINT="fde-XXX-YYY.z02.azurefd.net"
+```
 
-The following section examines different concepts that help tie in application and infrastructure.
+3. After the template is deployed, you need to manually update your DNS Zone to a) setup the CNAME to link the custom domain to the Azure Frontdoor endpoint, and b) validate the DNS entry for the custom domain.
 
-### Application settings
+    a. Create a CNAME record for your custom domain pointing to the frontdoor endpoint specified in `FRONTDOOR_ENDPOINT`.
 
-It is recommended to have application settings managed in Azure, separating configuration from code. Typically, the service host allows for application settings to be defined.
+    b. To validate your DNS entry for the custom domain, you need to create a new `TXT` entry in the DNS Zone.  To do this, use the three entries starting with `CUSTOM_DOMAIN_DNS_`:
 
-- For `appservice` and `function`, application settings should be defined on the Bicep resource for the targeted host. Reference template example [here](https://github.com/Azure-Samples/todo-nodejs-mongo/tree/main/infra).
-- For `aks`, application settings are applied using deployment manifests under the `<service>/manifests` folder. Reference template example [here](https://github.com/Azure-Samples/todo-nodejs-mongo-aks/tree/main/src/api/manifests).
+    You need to create a `TXT` record with the zone shown by `CUSTOM_DOMAIN_DNS_TXT_DOMAIN`.  The record must be named as shown in `CUSTOM_DOMAIN_DNS_TXT_NAME` with the value in `CUSTOM_DOMAIN_DNS_TXT_VALUE`. E.g, for the values shown above, we would add a `TXT` entry in the zone file for `example.com`.  The record would be names `_dnsauth.login` and have the value `_XXXXXXXXXXXXXXXXXXXXXXXX`.
 
-### Managed identities
+    It will take a few minutes for this information to propogate to Azure Frontdoor where you will see that the domain is validated and traffic is flowing.
 
-[Managed identities](https://learn.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview) allows you to secure communication between services. This is done without having the need for you to manage any credentials.
+4. Configure your Single Page Application using the `CORS_PROXY_ENDPOINT` value shown by `azd env get-values`.
 
-### Azure Key Vault
+## Clean up resources
 
-[Azure Key Vault](https://learn.microsoft.com/en-us/azure/key-vault/general/overview) allows you to store secrets securely. Your application can access these secrets securely through the use of managed identities.
+When you're done working with your proxy and related resources, you can use this command to delete the resources from Azure and avoid incurring any further costs:
 
-### Host configuration
-
-For `appservice`, the following host configuration options are often modified:
-
-- Language runtime version
-- Exposed port from the running container (if running a web service)
-- Allowed origins for CORS (Cross-Origin Resource Sharing) protection (if running a web service backend with a frontend)
-- The run command that starts up your service
+```shell
+azd down
+```
