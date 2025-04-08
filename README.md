@@ -18,7 +18,7 @@ The template requires you to already have a validated Custom URL Domain within y
 1. Run the following command to initialize the project.
 
 ```bash
-azd init --template https://github.com/jamesc/ms-identity-ciam-cors-proxy-frontdoor
+azd init --template https://github.com/azure-samples/ms-identity-extid-cors-proxy-frontdoor
 ```
 
 This command will clone the code to your current folder and prompt you for the following information:
