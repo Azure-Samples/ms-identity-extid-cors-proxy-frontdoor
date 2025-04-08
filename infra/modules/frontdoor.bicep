@@ -22,6 +22,10 @@ resource frontDoorProfile 'Microsoft.Cdn/profiles@2024-09-01' = {
     name: frontDoorSkuName
   }
   tags: tags
+  identity: {
+    type: 'SystemAssigned'
+    userAssignedIdentities: {}
+  }
 }
 
 resource frontDoorEndpoint 'Microsoft.Cdn/profiles/afdEndpoints@2024-09-01' = {
