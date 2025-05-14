@@ -24,7 +24,6 @@ resource frontDoorProfile 'Microsoft.Cdn/profiles@2024-09-01' = {
   tags: tags
   identity: {
     type: 'SystemAssigned'
-    userAssignedIdentities: {}
   }
 }
 
