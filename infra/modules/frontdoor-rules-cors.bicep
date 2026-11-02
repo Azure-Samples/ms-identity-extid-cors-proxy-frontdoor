@@ -39,6 +39,24 @@ resource corsProxyRule 'Microsoft.Cdn/profiles/ruleSets/rules@2024-09-01' = {
           value: corsAllowedOrigin
         }
       }
+      {
+        name: 'ModifyResponseHeader'
+        parameters: {
+          headerAction: 'Overwrite'
+          headerName: 'Access-Control-Allow-Methods'
+          typeName: 'DeliveryRuleHeaderActionParameters'
+          value: '{http_req_header_Access-Control-Request-Method}'
+        }
+      }
+      {
+        name: 'ModifyResponseHeader'
+        parameters: {
+          headerAction: 'Overwrite'
+          headerName: 'Access-Control-Allow-Headers'
+          typeName: 'DeliveryRuleHeaderActionParameters'
+          value: '{http_req_header_Access-Control-Request-Headers}'
+        }
+      }
     ]
   }
 
